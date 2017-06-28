@@ -1,8 +1,17 @@
 
 
 boot_emIRT <- function(emIRT.out, .data, .starts, .priors, .control, Ntrials=50, verbose=10){
+  UseMethod("boot_emIRT")
+}
+
+boot_emIRT.emIRT <- function(emIRT.out, .data, .starts, .priors, .control, Ntrials=50, verbose=10){
+  # Fallback method if no specific bootstrapping function is available
+  stop(paste0("Bootstrapping for models of class \"", class(emIRT.out)[1], "\" is not available (yet)."))
+}
 
 ### BEGIN BINARY IRT
+boot_emIRT.binIRT <- function(emIRT.out, .data, .starts, .priors, .control, Ntrials=50, verbose=10){
+
 if(class(emIRT.out)[1] == "binIRT"){
 
 ## Extract parameters to calculate vote probabilities
@@ -51,11 +60,11 @@ emIRT.out$bse$x <- apply(binIRT.trials,1,sd)
 return(emIRT.out)
 
 }   #end binIRT()
+}
 ### END BINARY IRT
 
-
-
 ### BEGIN DYNAMIC IRT
+boot_emIRT.dynIRT <- function(emIRT.out, .data, .starts, .priors, .control, Ntrials=50, verbose=10){
 if(class(emIRT.out)[1] == "dynIRT"){
 
 ## Extract parameters to calculate vote probabilities
@@ -69,7 +78,7 @@ beta.dynIRT <- emIRT.out$means$beta
 ## Calculate vote probabilities for observed votes
 for(i in 1:nrow(probmat)){
   for(j in 1:ncol(probmat)){
-	if(rc[i,j] != 0) probmat[i,j] = pnorm(alpha.dynIRT[j] + beta.dynIRT[j]*idealpts[i,vote_year[j]]) 
+	if(rc[i,j] != 0) probmat[i,j] = pnorm(alpha.dynIRT[j] + beta.dynIRT[j]*idealpts[i,vote_year[j]])
   }
 }
 
@@ -111,8 +120,10 @@ emIRT.out$bse$x <- bse.idealpts
 return(emIRT.out)
 
 }  #end dynIRT()
+}
 ### END DYNAMIC IRT
 
+boot_emIRT.hierIRT <- function(emIRT.out, .data, .starts, .priors, .control, Ntrials=50, verbose=10){
 
 ### BEGIN HIERIRT()
 if(class(emIRT.out)[1] == "hierIRT"){
@@ -172,11 +183,13 @@ if(trial %% verbose == 0){
 emIRT.out$bse$x_implied <- apply(hierIRT.trials,1,sd)
 return(emIRT.out)
 
-} #end hierIRT() 
+} #end hierIRT()
+}
 ### END HIERIRT()
 
 
 ### BEGIN ORDINAL IRT
+boot_emIRT.ordIRT <- function(emIRT.out, .data, .starts, .priors, .control, Ntrials=50, verbose=10){
 if(class(emIRT.out)[1] == "ordIRT"){
 
 ## Extract parameters to calculate vote probabilities
@@ -226,7 +239,13 @@ emIRT.out$bse$x <- apply(ordIRT.trials,1,sd)
 return(emIRT.out)
 
 }  # end ordIRT()
+}
 ### END ORDINAL IRT
 
-## END BOOT.EMIRT()
+boot_emIRT.networkIRT <- function(emIRT.out, .data, .starts, .priors, .control, Ntrials=50, verbose=10){
+  NextMethod("boot_emIRT")
+}
+
+boot_emIRT.poisIRT <- function(emIRT.out, .data, .starts, .priors, .control, Ntrials=50, verbose=10){
+  NextMethod("boot_emIRT")
 }
