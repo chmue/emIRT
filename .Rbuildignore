@@ -4,3 +4,5 @@ README.md
 Makefile
 ./test
 .travis.yml
+^.*\.Rproj$
+^\.Rproj\.user$

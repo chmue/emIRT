@@ -18,3 +18,4 @@ vignettes/*.pdf
 
 # R pkg check output
 ./emIRT.Rcheck
+.Rproj.user
