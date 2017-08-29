@@ -72,7 +72,9 @@ void getEystar_endorseIRT (const arma::mat &alpha,
     arma::uvec check = find_nonfinite(ystars) ;
 
     if (check.n_elem > 0) {
-        ystars.elem(check).print("ystar check") ;
+        // This line fills up the R terminal with NaN/NA values which do
+        // not generally help to diagnose the problem
+        // ystars.elem(check).print("ystar check") ;
     }
 
     // return(ystars) ;
