@@ -243,7 +243,82 @@ boot_emIRT.ordIRT <- function(emIRT.out, .data, .starts, .priors, .control, Ntri
 ### END ORDINAL IRT
 
 boot_emIRT.networkIRT <- function(emIRT.out, .data, .starts, .priors, .control, Ntrials=50, verbose=10){
-  NextMethod("boot_emIRT")
+  rc <- .data
+  n_rows <- nrow(.data)
+  n_cols <- ncol(.data)
+
+  # Matrices -> vector (the code estimates only one-dimensional models)
+  alpha <- emIRT.out$means$alpha[, 1]
+  beta <- emIRT.out$means$beta[, 1]
+  w <- emIRT.out$means$w[, 1]
+  theta <- emIRT.out$means$theta[, 1]
+
+  probmat <- pnorm(
+    matrix(beta, n_rows, n_cols, byrow = FALSE) +
+      matrix(alpha, n_rows, n_cols, byrow = TRUE) +
+      matrix(theta, n_rows, n_cols, byrow = FALSE)^2 +
+      matrix(w, n_rows, n_cols, byrow = TRUE)^2
+  )
+
+  pseudo.rc <- vector("list", Ntrials)
+  networkIRT.trials.alpha <- matrix(NA_real_, nrow=length(alpha), ncol=Ntrials)
+  networkIRT.trials.beta <- matrix(NA_real_, nrow=length(beta), ncol=Ntrials)
+  networkIRT.trials.w <- matrix(NA_real_, nrow=length(w), ncol=Ntrials)
+  networkIRT.trials.theta <- matrix(NA_real_, nrow=length(theta), ncol=Ntrials)
+
+  for(trial in 1:Ntrials){
+
+    ## Generate a bootstrapped roll call matrix
+    probs <- matrix(runif(n_rows * n_cols), nrow = n_rows, ncol = n_cols)
+    pseudo.rc[[trial]] <- 1 * ((1 * (rand <= probmat)) == rc)
+    rownames(pseudo.rc[[trial]]) <- rownames(rc)
+    colnames(pseudo.rc[[trial]]) <- colnames(rc)
+
+
+    sink("emIRTjunk.kjz")
+    est <- suppressMessages(
+      networkIRT(pseudo.rc[[trial]], .starts = .starts, .priors = .priors, .control = .control)
+    )
+    sink()
+    unlink("emIRTjunk.kjz")
+
+    # Do not store results if algorithm did not converge or converged
+    # after too little iterations (actually an error but no signalled)
+    if ((!est$runtime$conv) | (est$runtime$iters < 10)) {
+      next
+    }
+
+    networkIRT.trials.alpha[, trial] <- est$means$alpha[, 1]
+    networkIRT.trials.beta[, trial] <- est$means$beta[, 1]
+    networkIRT.trials.w[, trial] <- est$means$w[, 1]
+    networkIRT.trials.theta[, trial] <- est$means$theta[, 1]
+
+    if(trial %% verbose == 0){
+      cat("\n\t Iteration", trial, "complete...")
+      flush.console()
+    }
+
+  }
+
+  # Check an warn for non-converged trials
+  if (anyNA(networkIRT.trials.alpha)) {
+    warning(
+      paste0(
+        sum(is.na(networkIRT.trials.alpha[1, ])),
+        " run(s) did not converge. Effective sample size is ",
+        sum(!is.na(networkIRT.trials.alpha[1, ])),
+        "."
+      ),
+      call. = FALSE
+    )
+  }
+
+  emIRT.out$bse$alpha[, trial] <- apply(networkIRT.trials.alpha, 1, sd, na.rm = TRUE)
+  emIRT.out$bse$beta[, trial] <- apply(networkIRT.trials.beta, 1, sd, na.rm = TRUE)
+  emIRT.out$bse$w[, trial] <- apply(networkIRT.trials.w, 1, sd, na.rm = TRUE)
+  emIRT.out$bse$theta[, trial] <- apply(networkIRT.trials.theta, 1, sd, na.rm = TRUE)
+
+  return(emIRT.out)
 }
 
 boot_emIRT.poisIRT <- function(emIRT.out, .data, .starts, .priors, .control, Ntrials=50, verbose=10){
